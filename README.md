@@ -5,8 +5,6 @@ Make Adobe Photoshop document tabs show **only the file name** — no more
 
 ![before/after](docs/before-after.png)
 
-![PS Tab Cleaner app](docs/app.png)
-
 ## Why
 Photoshop appends zoom level, active layer and color mode to every document
 tab and there is no preference to turn it off ([requested since 2022](https://community.adobe.com/feature-requests-713/photoshop-request-edit-information-shown-in-the-open-file-tabs-653953)).
