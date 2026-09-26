@@ -18,8 +18,8 @@ using System.Windows.Forms;
 [assembly: AssemblyProduct("Photoshop Tabs Cleaner")]
 [assembly: AssemblyCompany("Dudkiewicz Corp")]
 [assembly: AssemblyCopyright("© 2026 Dudkiewicz Corp — dudkiewiczcorp.com")]
-[assembly: AssemblyVersion("2.1.0.0")]
-[assembly: AssemblyFileVersion("2.1.0.0")]
+[assembly: AssemblyVersion("1.0.1.0")]
+[assembly: AssemblyFileVersion("1.0.1.0")]
 
 static class UI
 {
@@ -489,11 +489,22 @@ static class Program
         {
             using (var pen = new Pen(UI.Stroke)) e.Graphics.DrawLine(pen, 0, 0, bar.Width, 0);
         };
-        var adiSz = UI.Tx("ADI.ONLINE", fA);
-        var adi = new Panel { Left = 10, Top = 1 + (32 - adiSz.Height) / 2, Width = adiSz.Width, Height = adiSz.Height, BackColor = Color.White, Cursor = Cursors.Hand };
-        Buffer(adi);
-        adi.Paint += (s, e) => UI.Draw(e.Graphics, "ADI.ONLINE", fA, UI.Blue, 0, 0);
-        adi.Click += (s, e) => OpenUrl("https://adi.online");
+        int lx = 10;
+        Action<string, Color, string> addLeft = (text, col, url) =>
+        {
+            var sz = UI.Tx(text, fA);
+            var pnl = new Panel { Left = lx, Top = 1 + (32 - sz.Height) / 2, Width = sz.Width,
+                Height = sz.Height, BackColor = Color.White,
+                Cursor = url != null ? Cursors.Hand : Cursors.Default };
+            Buffer(pnl);
+            pnl.Paint += (s, e) => UI.Draw(e.Graphics, text, fA, col, 0, 0);
+            if (url != null) pnl.Click += (s, e) => OpenUrl(url);
+            bar.Controls.Add(pnl);
+            lx += sz.Width + 4;
+        };
+        addLeft("ADI.ONLINE", UI.Blue, "https://www.adi.online");
+        addLeft("|", UI.Stroke, null);
+        addLeft("DUDKIEWICZ CORP", UI.TxStd, "https://www.dudkiewiczcorp.com");
 
         string bt = "BUY ME A CAFFE";
         var btSz = UI.Tx(bt, fB);
@@ -515,7 +526,6 @@ static class Program
             UI.DrawMid(g, bt, fB, UI.TxBlack, 17, 0, 16);
         };
         bmc.Click += (s, e) => OpenUrl("https://buymeacoffee.com/adriandudkiewicz");
-        bar.Controls.Add(adi);
         bar.Controls.Add(bmc);
         form.Controls.Add(bar);
     }

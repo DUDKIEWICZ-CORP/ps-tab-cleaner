@@ -44,4 +44,5 @@ Use at your own risk. This modifies files inside your Photoshop installation,
 which may not be covered by Adobe's EULA. Not affiliated with Adobe.
 
 ---
-Made by [Dudkiewicz Corp](https://www.dudkiewiczcorp.com)
+Part of the **A.D.I. — Asset Delivery Interface** ecosystem ([adi.online](https://www.adi.online)),
+developed by [DUDKIEWICZ CORP](https://www.dudkiewiczcorp.com), founded by Adrian Dudkiewicz.
