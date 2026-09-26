@@ -9,5 +9,5 @@ One-time setup is described at the top of `build.sh`. Then:
 ```
 ./build.sh
 ```
-Output: `PS-Tab-Cleaner-mac.zip` — signed, notarized and stapled, ready for
+Output: `PhotoshopTabCleaner-MAC.zip` — signed, notarized and stapled, ready for
 GitHub Releases.

@@ -40,6 +40,6 @@ xcrun stapler staple "$APP"
 rm notarize.zip
 
 echo "== final archive"
-ditto -c -k --keepParent "$APP" PS-Tab-Cleaner-mac.zip
+ditto -c -k --keepParent "$APP" PhotoshopTabCleaner-MAC.zip
 rm -f PSTabCleaner PSTabCleaner_x86 PSTabCleaner_arm
-echo "DONE -> PS-Tab-Cleaner-mac.zip (upload to GitHub Releases)"
+echo "DONE -> PhotoshopTabCleaner-MAC.zip (upload to GitHub Releases)"

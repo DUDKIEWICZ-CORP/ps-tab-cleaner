@@ -17,7 +17,7 @@ dictionary (`tw10428_*.dat`). PS Tabs Cleaner rewrites the four
 No application code is touched, and a `.bak` backup of every file is kept.
 
 ## Usage (Windows)
-1. Download `PhotoshopTabFix.exe` from [Releases](../../releases).
+1. Download `PhotoshopTabCleaner-PC.exe` from [Releases](../../releases).
 2. Close Photoshop, run the exe (admin prompt), click **Fix tabs**.
 3. Start Photoshop.
 
