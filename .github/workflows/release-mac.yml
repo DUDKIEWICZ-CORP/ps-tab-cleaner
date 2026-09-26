@@ -1,0 +1,169 @@
+name: Release (macOS)
+
+# Builds, signs, notarises and staples the macOS app.
+# A tag like v1.0.1 attaches PS-Tab-Cleaner-mac.zip to that release;
+# workflow_dispatch proves signing works without burning a version number
+# (per D:\Projects\adisys\SIGNING-RECIPE.md).
+# No electron-builder here, so the CSC_LINK trap from the recipe does not
+# apply — codesign and notarytool are driven directly.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Fail FAST on a missing secret (names are the DUDKIEWICZ-CORP
+      # organisation ones).
+      - name: Check the signing secrets are present
+        run: |
+          missing=""
+          [ -n "${{ secrets.MAC_CERT_P12 }}" ] || missing="$missing MAC_CERT_P12"
+          [ -n "${{ secrets.MAC_CERT_PASSWORD }}" ] || missing="$missing MAC_CERT_PASSWORD"
+          [ -n "${{ secrets.APPLE_ID }}" ] || missing="$missing APPLE_ID"
+          [ -n "${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}" ] || missing="$missing APPLE_APP_SPECIFIC_PASSWORD"
+          [ -n "${{ secrets.APPLE_TEAM_ID }}" ] || missing="$missing APPLE_TEAM_ID"
+          if [ -n "$missing" ]; then
+            echo "Missing secret(s):$missing"
+            echo "Organisation secrets need Repository access granted to this repo."
+            exit 1
+          fi
+          echo "All five signing secrets are visible."
+
+      # Visible is not the same as correct: decode the certificate, try to
+      # open it with the password, and name the one that failed.
+      # Nothing secret is printed — sizes, an expiry date and a verdict.
+      - name: Check the certificate opens with the password
+        env:
+          P12: ${{ secrets.MAC_CERT_P12 }}
+          P12PASS: ${{ secrets.MAC_CERT_PASSWORD }}
+        run: |
+          printf '%s' "$P12" | tr -d '\r\n ' | base64 --decode > /tmp/cert.p12 || {
+            echo "MAC_CERT_P12 is not valid base64."
+            exit 1
+          }
+          echo "certificate: $(wc -c < /tmp/cert.p12) bytes decoded"
+          echo "password:    ${#P12PASS} characters"
+          case "$P12PASS" in
+            *[[:space:]]) echo "WARNING: the password ENDS in whitespace - almost certainly a pasted newline." ;;
+          esac
+          if openssl pkcs12 -in /tmp/cert.p12 -nokeys -passin env:P12PASS > /tmp/cert.pem 2>/dev/null \
+             || openssl pkcs12 -in /tmp/cert.p12 -nokeys -legacy -passin env:P12PASS > /tmp/cert.pem 2>/dev/null; then
+            echo "OK: MAC_CERT_PASSWORD opens MAC_CERT_P12."
+            openssl x509 -in /tmp/cert.pem -noout -subject -enddate 2>/dev/null || true
+          else
+            echo "MAC_CERT_PASSWORD does NOT open MAC_CERT_P12 - this is what fails the build."
+            exit 1
+          fi
+          rm -f /tmp/cert.p12 /tmp/cert.pem
+
+      # PART 3 of the signing recipe, verbatim: build the keychain ourselves.
+      - name: Put the certificate in a keychain of our own
+        env:
+          P12: ${{ secrets.MAC_CERT_P12 }}
+          P12PASS: ${{ secrets.MAC_CERT_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYPASS="$(openssl rand -hex 16)"
+          echo "KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+
+          printf '%s' "$P12" | tr -d '\r\n ' | base64 --decode > "$RUNNER_TEMP/cert.p12"
+
+          security create-keychain -p "$KEYPASS" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYPASS" "$KEYCHAIN"
+
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$P12PASS" \
+            -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/productbuild
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYPASS" "$KEYCHAIN" > /dev/null
+
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+
+          rm -f "$RUNNER_TEMP/cert.p12"
+          echo "identities now visible to codesign:"
+          security find-identity -v -p codesigning "$KEYCHAIN"
+
+      - name: Build the app (universal)
+        run: |
+          cd mac
+          swiftc -O -target x86_64-apple-macos12 -o PSTabCleaner_x86 PSTabCleaner.swift
+          swiftc -O -target arm64-apple-macos12  -o PSTabCleaner_arm PSTabCleaner.swift
+          lipo -create -output PSTabCleaner PSTabCleaner_x86 PSTabCleaner_arm
+          APP="PS Tab Cleaner.app"
+          rm -rf "$APP"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          cp PSTabCleaner "$APP/Contents/MacOS/"
+          cp engine.sh "$APP/Contents/Resources/"
+          cp Info.plist "$APP/Contents/"
+          iconutil -c icns icon.iconset -o "$APP/Contents/Resources/icon.icns"
+
+      - name: Sign (hardened runtime)
+        run: |
+          cd mac
+          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN" | grep 'Developer ID Application' | head -1 | sed 's/.*"\(.*\)"/\1/')
+          echo "identity: $IDENTITY"
+          [ -n "$IDENTITY" ] || { echo "No Developer ID Application identity in the keychain."; exit 1; }
+          codesign --force --options runtime --timestamp --keychain "$KEYCHAIN" \
+            --sign "$IDENTITY" "PS Tab Cleaner.app/Contents/Resources/engine.sh"
+          codesign --force --options runtime --timestamp --keychain "$KEYCHAIN" \
+            --sign "$IDENTITY" "PS Tab Cleaner.app"
+          codesign --verify --strict --verbose=2 "PS Tab Cleaner.app"
+
+      # notarytool can exit 0 with status Invalid, so the verdict is parsed
+      # rather than trusted; on failure the notarisation log is printed.
+      - name: Notarise and staple
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          cd mac
+          ditto -c -k --keepParent "PS Tab Cleaner.app" notarize.zip
+          OUT=$(xcrun notarytool submit notarize.zip \
+            --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --wait --output-format json)
+          echo "$OUT"
+          STATUS=$(echo "$OUT" | /usr/bin/python3 -c 'import sys,json;print(json.load(sys.stdin)["status"])')
+          if [ "$STATUS" != "Accepted" ]; then
+            ID=$(echo "$OUT" | /usr/bin/python3 -c 'import sys,json;print(json.load(sys.stdin)["id"])')
+            xcrun notarytool log "$ID" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+              --password "$APPLE_APP_SPECIFIC_PASSWORD" || true
+            exit 1
+          fi
+          xcrun stapler staple "PS Tab Cleaner.app"
+          xcrun stapler validate "PS Tab Cleaner.app"
+          rm notarize.zip
+          ditto -c -k --keepParent "PS Tab Cleaner.app" PS-Tab-Cleaner-mac.zip
+
+      - name: Gatekeeper verdict
+        run: |
+          cd mac
+          spctl -a -vvv -t install "PS Tab Cleaner.app"
+
+      - name: Upload artifact (manual test runs)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: PS-Tab-Cleaner-mac
+          path: mac/PS-Tab-Cleaner-mac.zip
+
+      - name: Attach to the release (tag builds)
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" \
+            --title "PS Tab Cleaner $TAG" \
+            --notes "macOS build, signed and notarised by Dudkiewicz Corp."
+          gh release upload "$TAG" mac/PS-Tab-Cleaner-mac.zip --clobber
