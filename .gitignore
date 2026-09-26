@@ -1,3 +1,6 @@
 *.exe
 Output/
 *.bak
+release/
+preview.png
+metadata.json

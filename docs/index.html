@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Photoshop Tabs Cleaner — clean document tabs</title>
+<meta name="description" content="Makes Photoshop document tabs show only the file name. No more zoom, layer and color mode clutter.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #fafafa; --stroke: #e5e5e5; --stroke-mid: #d9d9d9;
+    --tx-black: #121212; --tx-dark: #777; --tx-std: #999;
+    --blue: #3790f0; --blue-dark: #285f9c; --blue-light: #64aefe;
+  }
+  body { background: var(--bg); font-family: "Chakra Petch", sans-serif; color: var(--tx-black); }
+  .wrap { max-width: 850px; margin: 0 auto; background: var(--bg);
+    border-left: 1px solid var(--stroke); border-right: 1px solid var(--stroke); min-height: 100vh;
+    display: flex; flex-direction: column; }
+
+  header { background: #fff; border-bottom: 1px solid var(--stroke); padding: 10px;
+    display: flex; align-items: center; gap: 10px; }
+  .logo { width: 20px; height: 20px; display: block; }
+  header b { font-size: 14px; }
+  header .gh { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--tx-dark); text-decoration: none; }
+  header .gh:hover { color: var(--tx-black); }
+
+  main { padding: 30px; display: flex; flex-direction: column; gap: 24px; }
+  h1 { font-size: 24px; font-weight: 600; }
+  .sub { font-size: 14px; color: var(--tx-dark); margin-top: 6px; }
+
+  .demo { background: #3c3c3c; border: 1px solid #fff; border-radius: 8px; }
+  .demo-in { border: 1px solid #252525; border-radius: 7px; padding: 24px;
+    display: flex; flex-direction: column; gap: 14px; }
+  .demo-lbl { font-size: 12px; font-weight: 600; color: #b4b4b4; }
+  .strip { display: flex; gap: 1px; background: #383838; border: 1px solid #383838;
+    width: fit-content; max-width: 100%; overflow-x: auto; }
+  .tab { height: 20px; padding: 0 8px; display: flex; align-items: center; gap: 8px;
+    background: #424242; color: #a0a0a0; white-space: nowrap;
+    font-family: "Segoe UI", Arial, sans-serif; font-size: 12px; font-weight: 600; }
+  .tab.on { background: #535353; color: #f0f0f0; }
+  .tab i { font-style: normal; color: #a8a8a8; font-size: 10px; }
+  .demo-line { height: 1px; background: #4b4b4b; }
+
+  .clutter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .xbox { width: 30px; height: 30px; background: #fff; border: 1px solid #eee; border-radius: 3px;
+    display: flex; align-items: center; justify-content: center; color: red; font-weight: 700; }
+  .chip { height: 30px; padding: 0 14px; background: #fff; border: 1px solid #eee; border-radius: 3px;
+    display: flex; align-items: center; font-family: "Segoe UI", sans-serif; font-size: 14px; font-weight: 600; }
+  .clutter span.note { margin-left: auto; font-size: 14px; color: var(--tx-dark); }
+
+  .dl { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .btn { display: inline-flex; border: 1px solid var(--blue-dark); border-radius: 4px;
+    text-decoration: none; }
+  .btn > span { background: var(--blue); border: 1px solid var(--blue-light); border-radius: 3px;
+    padding: 10px 18px; color: #fff; font-size: 14px; font-weight: 700; }
+  .btn:hover > span { background: #4a9ef5; }
+  .btn.alt { border-color: var(--stroke); }
+  .btn.alt > span { background: #f6f6f6; border-color: #fff; color: #696969; }
+  .btn.alt:hover > span { background: #efefef; }
+  .dl small { font-size: 12px; color: var(--tx-std); }
+
+  .divider { height: 1px; background: var(--stroke-mid); }
+
+  section.how { padding: 30px; display: flex; flex-direction: column; gap: 24px; }
+  .how h2 { font-size: 14px; font-weight: 400; color: var(--tx-dark); }
+  .cards { display: flex; flex-direction: column; gap: 14px; }
+  .card { background: #fff; border: 1px solid var(--stroke-mid); border-radius: 8px;
+    padding: 14px; display: flex; gap: 14px; align-items: baseline; }
+  .card b { font-size: 14px; font-weight: 600; white-space: nowrap; }
+  .card p { font-size: 13px; color: var(--tx-dark); line-height: 1.5; }
+  .card .num { color: var(--blue); font-weight: 700; font-size: 14px; }
+
+  footer { margin-top: auto; background: #fff; border-top: 1px solid var(--stroke); padding: 10px;
+    display: flex; align-items: center; justify-content: space-between; font-size: 10px; }
+  footer a { text-decoration: none; }
+  .adi { color: var(--blue); font-weight: 700; }
+  .bmc { color: var(--tx-black); display: flex; align-items: center; gap: 8px; }
+  .cup { width: 9px; height: 13px; position: relative; display: inline-block; }
+  .cup::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: #010202; }
+  .cup::after { content: ""; position: absolute; top: 4px; left: 0.5px; width: 7px; height: 8px;
+    background: #FFDD06; border: 1px solid #010202; clip-path: polygon(0 0, 100% 0, 84% 100%, 16% 100%); }
+  .disclaimer { padding: 0 30px 30px; font-size: 11px; color: var(--tx-std); line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img class="logo" src="logo.svg" alt="ADI">
+    <b>Photoshop Tabs Cleaner</b>
+    <a class="gh" href="https://github.com/DUDKIEWICZ-CORP/ps-tab-cleaner">GITHUB &#8599;</a>
+  </header>
+
+  <main>
+    <div>
+      <h1>Clean Photoshop document tabs.</h1>
+      <div class="sub">Shows only the file name instead of zoom, layer and color mode info.</div>
+    </div>
+
+    <div class="demo"><div class="demo-in">
+      <div class="demo-lbl">Before</div>
+      <div class="strip">
+        <div class="tab on">kv_summer.psd @ 100% (keyvisual, RGB/8#)* <i>&#10005;</i></div>
+        <div class="tab">lifestyle.jpg @50% (layer 1, CMYK/16) <i>&#10005;</i></div>
+        <div class="tab">logo.png (vector_flattened, RGB/32) <i>&#10005;</i></div>
+      </div>
+      <div class="demo-line"></div>
+      <div class="demo-lbl">After</div>
+      <div class="strip">
+        <div class="tab on">kv_summer.psd* <i>&#10005;</i></div>
+        <div class="tab">lifestyle.jpg <i>&#10005;</i></div>
+        <div class="tab">logo.png <i>&#10005;</i></div>
+      </div>
+    </div></div>
+
+    <div class="clutter">
+      <div class="xbox">&#10005;</div>
+      <div class="chip">@ 33% (Layer 0, RGB/8#)</div>
+      <span class="note">Backups are kept, Restore undoes everything</span>
+    </div>
+
+    <div class="dl">
+      <a class="btn" href="https://github.com/DUDKIEWICZ-CORP/ps-tab-cleaner/releases/latest"><span>Download for Windows</span></a>
+      <a class="btn alt" href="https://github.com/DUDKIEWICZ-CORP/ps-tab-cleaner"><span>View source</span></a>
+      <small>Free &#183; signed &#183; no install &#183; every Photoshop version and language</small>
+    </div>
+  </main>
+
+  <div class="divider"></div>
+
+  <section class="how">
+    <h2>How it works</h2>
+    <div class="cards">
+      <div class="card"><span class="num">1</span><div><b>Run the exe</b><p>No installation. Windows asks for admin rights because Photoshop lives in Program Files.</p></div></div>
+      <div class="card"><span class="num">2</span><div><b>Click Fix Tabs</b><p>The app rewrites the tab title templates in Photoshop's localization dictionary. No application code is touched and a backup of every file is kept.</p></div></div>
+      <div class="card"><span class="num">3</span><div><b>Start Photoshop</b><p>Tabs show only the file name. Restore brings the defaults back any time. After a Photoshop update simply run Fix again.</p></div></div>
+    </div>
+  </section>
+
+  <div class="disclaimer">Use at your own risk. This modifies files inside your Photoshop installation, which may not be covered by Adobe's EULA. Not affiliated with Adobe. Photoshop is a trademark of Adobe Inc.</div>
+
+  <footer>
+    <a class="adi" href="https://adi.online">ADI.ONLINE</a>
+    <a class="bmc" href="https://buymeacoffee.com/adriandudkiewicz"><span class="cup"></span>BUY ME A CAFFE</a>
+  </footer>
+</div>
+</body>
+</html>

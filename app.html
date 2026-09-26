@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Photoshop Tabs Cleaner — GUI reference</title>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { background: #555; }
+  body { display: flex; justify-content: center; padding: 40px 0;
+    font-family: "Chakra Petch", sans-serif; color: #121212; }
+
+  .app { width: 850px; background: #fafafa; border: 1px solid #e5e5e5;
+    display: flex; flex-direction: column; }
+
+  .top { background: #fff; border-bottom: 1px solid #e5e5e5; padding: 10px;
+    display: flex; align-items: center; gap: 10px; }
+  .top img { width: 20px; height: 20px; display: block; }
+  .top b { font-size: 14px; font-weight: 700; }
+  .top .x { margin-left: auto; width: 20px; height: 20px; color: #777; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 14px; }
+
+  .main { background: #fafafa; padding: 30px; display: flex; flex-direction: column; gap: 24px; }
+  h1 { font-size: 24px; font-weight: 600; line-height: normal; }
+  .sub { font-size: 14px; font-weight: 400; color: #777; margin-top: 6px; }
+
+  .demo { background: #3c3c3c; border: 1px solid #fff; border-radius: 8px; align-self: flex-start; }
+  .demo-in { border: 1px solid #252525; border-radius: 7px; padding: 24px;
+    display: flex; flex-direction: column; gap: 14px; }
+  .demo-lbl { font-size: 12px; font-weight: 600; color: #b4b4b4; line-height: normal; }
+  .strip { display: flex; gap: 1px; background: #383838; border: 1px solid #383838; width: fit-content; }
+  .tab { height: 20px; padding: 0 8px; display: flex; align-items: center; gap: 8px;
+    background: #424242; color: #a0a0a0; white-space: nowrap;
+    font-family: "Segoe UI", sans-serif; font-size: 12px; font-weight: 600; }
+  .tab.on { background: #535353; color: #f0f0f0; }
+  .tab svg { display: block; }
+  .demo-line { height: 1px; background: #4b4b4b; }
+
+  .clutter { display: flex; align-items: center; gap: 8px; }
+  .xbox { width: 30px; height: 30px; background: #fff; border: 1px solid #eee; border-radius: 3px;
+    display: flex; align-items: center; justify-content: center; }
+  .chip { height: 30px; padding: 0 14px; background: #fff; border: 1px solid #eee; border-radius: 3px;
+    display: flex; align-items: center;
+    font-family: "Segoe UI", sans-serif; font-size: 14px; font-weight: 600; color: #121212; }
+  .clutter .note { margin-left: auto; font-size: 14px; color: #777; }
+
+  .divider { height: 1px; background: #d9d9d9; }
+
+  .center { background: #fafafa; padding: 30px; display: flex; flex-direction: column; gap: 24px; }
+  .center h2 { font-size: 14px; font-weight: 400; color: #777; }
+  .cards { display: flex; flex-direction: column; gap: 14px; }
+  .card { background: #fff; border: 1px solid #d9d9d9; border-radius: 8px; height: 60px;
+    padding: 8px 14px; display: flex; align-items: center; justify-content: space-between; }
+  .card b { font-size: 14px; font-weight: 600; }
+  .card .right { display: flex; align-items: center; gap: 10px; }
+  .status { font-size: 12px; font-weight: 600; color: #3790f0; }
+  .status.orig { color: #999; }
+
+  .btn { display: inline-flex; height: 30px; border: 1px solid #285f9c; border-radius: 4px;
+    cursor: pointer; }
+  .btn > span { flex: 1; display: flex; align-items: center; padding: 0 8px;
+    background: #3790f0; border: 1px solid #64aefe; border-radius: 3px;
+    color: #fff; font-size: 12px; font-weight: 700; font-family: "Chakra Petch", sans-serif; }
+  .btn:hover > span { background: #4a9ef5; }
+  .btn.alt { border-color: #e5e5e5; }
+  .btn.alt > span { background: #f6f6f6; border-color: #fff; color: #696969; }
+  .btn.alt:hover > span { background: #efefef; }
+
+  .bottom { background: #fff; border-top: 1px solid #e5e5e5; padding: 10px;
+    display: flex; align-items: center; justify-content: space-between; font-size: 10px; }
+  .adi { color: #3790f0; font-weight: 700; cursor: pointer; }
+  .bmc { display: flex; align-items: center; gap: 8px; font-weight: 400; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <img src="docs/logo.svg" alt="">
+    <b>Photoshop Tabs Cleaner</b>
+    <span class="x">&#10005;</span>
+  </div>
+
+  <div class="main">
+    <div>
+      <h1>Clean Photoshop document tabs.</h1>
+      <div class="sub">Shows only the file name instead of zoom, layer and color mode info.</div>
+    </div>
+
+    <div class="demo"><div class="demo-in">
+      <div class="demo-lbl">Before</div>
+      <div class="strip">
+        <div class="tab on">kv_summer.psd @ 100% (keyvisual, RGB/8#)*<svg width="6" height="6"><path d="M0 0L6 6M6 0L0 6" stroke="#a8a8a8"/></svg></div>
+        <div class="tab">lifestyle.jpg @50% (layer 1, CMYK/16#)<svg width="6" height="6"><path d="M0 0L6 6M6 0L0 6" stroke="#a8a8a8"/></svg></div>
+        <div class="tab">logo.png (vector_flattened, RGB/32#)<svg width="6" height="6"><path d="M0 0L6 6M6 0L0 6" stroke="#a8a8a8"/></svg></div>
+      </div>
+      <div class="demo-line"></div>
+      <div class="demo-lbl">After</div>
+      <div class="strip">
+        <div class="tab on">kv_summer.psd*<svg width="6" height="6"><path d="M0 0L6 6M6 0L0 6" stroke="#a8a8a8"/></svg></div>
+        <div class="tab">lifestyle.jpg<svg width="6" height="6"><path d="M0 0L6 6M6 0L0 6" stroke="#a8a8a8"/></svg></div>
+        <div class="tab">logo.png<svg width="6" height="6"><path d="M0 0L6 6M6 0L0 6" stroke="#a8a8a8"/></svg></div>
+      </div>
+    </div></div>
+
+    <div class="clutter">
+      <div class="xbox"><svg width="12" height="12"><path d="M1 1L11 11M11 1L1 11" stroke="red" stroke-width="2"/></svg></div>
+      <div class="chip">@ 33% (Layer 0, RGB/8#)</div>
+      <span class="note">Backups are kept, Restore undoes everything</span>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="center">
+    <h2>Photoshops Detected</h2>
+    <div class="cards">
+      <div class="card"><b>Adobe Photoshop (Beta)</b>
+        <div class="right"><span class="status">patched</span><span class="btn"><span>Fix Tabs</span></span><span class="btn alt"><span>Restore original</span></span></div></div>
+      <div class="card"><b>Adobe Photoshop 2023</b>
+        <div class="right"><span class="status">patched</span><span class="btn"><span>Fix Tabs</span></span><span class="btn alt"><span>Restore original</span></span></div></div>
+      <div class="card"><b>Adobe Photoshop 2024</b>
+        <div class="right"><span class="status">patched</span><span class="btn"><span>Fix Tabs</span></span><span class="btn alt"><span>Restore original</span></span></div></div>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <span class="adi">ADI.ONLINE</span>
+    <span class="bmc"><svg width="9" height="13"><rect x="0" y="0" width="9" height="2" fill="#010202"/><path d="M1 4h7l-1 8.5h-5z" fill="#FFDD06" stroke="#010202" stroke-width="0.8"/></svg>BUY ME A CAFFE</span>
+  </div>
+</div>
+</body>
+</html>
