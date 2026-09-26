@@ -17,8 +17,8 @@ echo "== signing identity: $IDENTITY"
 [ -n "$IDENTITY" ] || { echo "No Developer ID Application certificate in Keychain"; exit 1; }
 
 echo "== compiling (universal)"
-swiftc -O -target x86_64-apple-macos12  -o PSTabCleaner_x86 PSTabCleaner.swift
-swiftc -O -target arm64-apple-macos12   -o PSTabCleaner_arm PSTabCleaner.swift
+swiftc -O -parse-as-library -target x86_64-apple-macos12  -o PSTabCleaner_x86 PSTabCleaner.swift
+swiftc -O -parse-as-library -target arm64-apple-macos12   -o PSTabCleaner_arm PSTabCleaner.swift
 lipo -create -output PSTabCleaner PSTabCleaner_x86 PSTabCleaner_arm
 
 echo "== bundling"

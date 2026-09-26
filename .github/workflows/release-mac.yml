@@ -95,8 +95,8 @@ jobs:
       - name: Build the app (universal)
         run: |
           cd mac
-          swiftc -O -target x86_64-apple-macos12 -o PSTabCleaner_x86 PSTabCleaner.swift
-          swiftc -O -target arm64-apple-macos12  -o PSTabCleaner_arm PSTabCleaner.swift
+          swiftc -O -parse-as-library -target x86_64-apple-macos12 -o PSTabCleaner_x86 PSTabCleaner.swift
+          swiftc -O -parse-as-library -target arm64-apple-macos12  -o PSTabCleaner_arm PSTabCleaner.swift
           lipo -create -output PSTabCleaner PSTabCleaner_x86 PSTabCleaner_arm
           APP="PS Tab Cleaner.app"
           rm -rf "$APP"
