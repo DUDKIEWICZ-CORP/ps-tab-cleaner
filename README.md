@@ -25,6 +25,15 @@ No application code is touched, and a `.bak` backup of every file is kept.
 A Photoshop update reverts the templates — just run Fix again.
 Works with every installed Photoshop version and UI language.
 
+## Photoshop 2025 / 2026
+Works, with one caveat: since Photoshop 2025 Adobe builds the **US English**
+interface texts into the app itself, so with the US English UI there is
+nothing on disk to patch. Switch to **International English** (identical
+interface) and everything works: Creative Cloud -> Preferences -> Apps ->
+Default install language: English (International), update Photoshop, then in
+Photoshop set Preferences -> Interface -> UI Language: International English,
+restart and run Fix Tabs. All other interface languages are unaffected.
+
 ## macOS
 Run `PhotoshopTabFix-mac.sh` with sudo (signed .app coming later):
 ```

@@ -19,8 +19,8 @@ using System.Windows.Forms;
 [assembly: AssemblyProduct("Photoshop Tabs Cleaner")]
 [assembly: AssemblyCompany("Dudkiewicz Corp")]
 [assembly: AssemblyCopyright("Â© 2026 Dudkiewicz Corp â€” dudkiewiczcorp.com")]
-[assembly: AssemblyVersion("1.0.3.0")]
-[assembly: AssemblyFileVersion("1.0.3.0")]
+[assembly: AssemblyVersion("1.0.4.0")]
+[assembly: AssemblyFileVersion("1.0.4.0")]
 
 static class UI
 {
@@ -156,6 +156,7 @@ static class Program
     static readonly Regex Rx = new Regex("(\"\\$\\$\\$/ImageWindow/TitleTemplate[^=]*)=[^\"]*\"");
     static readonly Regex RxPatched = new Regex("\"\\$\\$\\$/ImageWindow/TitleTemplate=\\^0\"");
     static Dictionary<string, List<string>> installs = new Dictionary<string, List<string>>();
+    static HashSet<string> stubs = new HashSet<string>();
     static Form form;
     static Panel cardsPanel;
     static Image Logo;
@@ -451,6 +452,7 @@ static class Program
     static void Scan()
     {
         installs.Clear();
+        stubs.Clear();
         cardsPanel.Controls.Clear();
         foreach (string dir in CandidateDirs())
         {
@@ -459,7 +461,14 @@ static class Program
             try { files = Directory.Exists(loc) ? Directory.GetFiles(loc, "tw10428_*.dat", SearchOption.AllDirectories) : new string[0]; }
             catch { files = new string[0]; }
             if (files.Length > 0 && !installs.ContainsKey(Path.GetFileName(dir)))
-                installs[Path.GetFileName(dir)] = files.ToList();
+            {
+                string ver = Path.GetFileName(dir);
+                installs[ver] = files.ToList();
+                // PS 2025+ ships a ~4 KB placeholder for US English: the real
+                // strings live inside Photoshop.exe and cannot be patched.
+                bool allTiny = files.All(f => { try { return new FileInfo(f).Length < 100 * 1024; } catch { return false; } });
+                if (allTiny) stubs.Add(ver);
+            }
         }
         int cy = 0;
         foreach (var kv in installs.OrderBy(k => k.Key))
@@ -484,9 +493,20 @@ static class Program
         form.Invalidate();
     }
 
+    const string StubInfo = "This Photoshop uses the US English interface.\n\n" +
+        "Since Photoshop 2025 Adobe builds the US English texts into the app itself, " +
+        "so there is nothing on disk to patch. Every other interface language still works.\n\n" +
+        "The fix takes two minutes:\n" +
+        "1. Creative Cloud app -> Preferences -> Apps -> Default install language: English (International)\n" +
+        "2. Update / reinstall Photoshop\n" +
+        "3. Photoshop -> Preferences -> Interface -> UI Language: International English, restart\n" +
+        "4. Run Fix Tabs again\n\n" +
+        "International English looks identical (Color vs Colour level differences).";
+
     static Control MakeCard(string ver, int cy)
     {
-        bool patched = IsPatched(installs[ver][0]);
+        bool stub = stubs.Contains(ver);
+        bool patched = !stub && IsPatched(installs[ver][0]);
         var fName = UI.ChakraSemi(14); var fSt = UI.ChakraSemi(12);
         var card = new Panel { Left = 0, Top = cy, Width = cardsPanel.Width, Height = 60, BackColor = UI.Bg };
         Buffer(card);
@@ -501,7 +521,7 @@ static class Program
         undo.Top = 15; undo.Left = card.Width - 14 - undo.Width;
         var fix = new TriButton("Fix Tabs", true);
         fix.Top = 15; fix.Left = undo.Left - 10 - fix.Width;
-        string stTxt = patched ? "patched" : "original";
+        string stTxt = stub ? "US English" : (patched ? "patched" : "original");
         var stSz = UI.Tx(stTxt, fSt);
         var status = new Panel
         {
@@ -510,8 +530,18 @@ static class Program
         };
         Buffer(status);
         status.Paint += (s, e) => UI.Draw(e.Graphics, stTxt, fSt, patched ? UI.Blue : UI.TxStd, 0, 0);
-        fix.Click += (s, e) => Apply(ver, false);
-        undo.Click += (s, e) => Apply(ver, true);
+        if (stub)
+        {
+            fix.Click += (s, e) => MessageBox.Show(StubInfo, "Photoshop Tabs Cleaner - " + ver,
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            undo.Click += (s, e) => MessageBox.Show(StubInfo, "Photoshop Tabs Cleaner - " + ver,
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        else
+        {
+            fix.Click += (s, e) => Apply(ver, false);
+            undo.Click += (s, e) => Apply(ver, true);
+        }
         card.Controls.Add(status); card.Controls.Add(fix); card.Controls.Add(undo);
         return card;
     }
