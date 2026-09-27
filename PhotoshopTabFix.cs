@@ -1,4 +1,4 @@
-// Photoshop Tabs Cleaner — pixel port of app.html / Figma node 2174:9503.
+﻿// Photoshop Tabs Cleaner â€” pixel port of app.html / Figma node 2174:9503.
 // All text via GDI TextRenderer (ClearType), layout mirrors the CSS reference.
 using System;
 using System.Collections.Generic;
@@ -18,9 +18,9 @@ using System.Windows.Forms;
 [assembly: AssemblyTitle("Photoshop Tabs Cleaner")]
 [assembly: AssemblyProduct("Photoshop Tabs Cleaner")]
 [assembly: AssemblyCompany("Dudkiewicz Corp")]
-[assembly: AssemblyCopyright("© 2026 Dudkiewicz Corp — dudkiewiczcorp.com")]
-[assembly: AssemblyVersion("1.0.2.0")]
-[assembly: AssemblyFileVersion("1.0.2.0")]
+[assembly: AssemblyCopyright("Â© 2026 Dudkiewicz Corp â€” dudkiewiczcorp.com")]
+[assembly: AssemblyVersion("1.0.3.0")]
+[assembly: AssemblyFileVersion("1.0.3.0")]
 
 static class UI
 {
@@ -570,9 +570,45 @@ static class Program
     static void OpenUrl(string url) { try { Process.Start(url); } catch { } }
 
     /* ---------- patch engine ---------- */
+    // tw10428 dictionaries are UTF-16LE for most locales but UTF-8 for some;
+    // decode by BOM (falling back to a null-byte heuristic) and write back
+    // with the same encoding and BOM so Photoshop keeps accepting the file.
+    static string ReadDict(string file, out Encoding enc, out byte[] bom)
+    {
+        byte[] raw = File.ReadAllBytes(file);
+        if (raw.Length > 2 && raw[0] == 0xFF && raw[1] == 0xFE)
+        {
+            enc = Encoding.Unicode; bom = new byte[] { 0xFF, 0xFE };
+            return Encoding.Unicode.GetString(raw, 2, raw.Length - 2);
+        }
+        if (raw.Length > 3 && raw[0] == 0xEF && raw[1] == 0xBB && raw[2] == 0xBF)
+        {
+            enc = new UTF8Encoding(false); bom = new byte[] { 0xEF, 0xBB, 0xBF };
+            return Encoding.UTF8.GetString(raw, 3, raw.Length - 3);
+        }
+        bom = new byte[0];
+        int zeros = 0;
+        for (int i = 0; i < Math.Min(raw.Length, 200); i++) if (raw[i] == 0) zeros++;
+        enc = zeros > 20 ? Encoding.Unicode : (Encoding)new UTF8Encoding(false);
+        return enc.GetString(raw);
+    }
+
+    static void WriteDict(string file, string text, Encoding enc, byte[] bom)
+    {
+        byte[] body = enc.GetBytes(text);
+        byte[] outb = new byte[bom.Length + body.Length];
+        Array.Copy(bom, 0, outb, 0, bom.Length);
+        Array.Copy(body, 0, outb, bom.Length, body.Length);
+        File.WriteAllBytes(file, outb);
+    }
+
     static bool IsPatched(string file)
     {
-        try { return RxPatched.IsMatch(Encoding.Unicode.GetString(File.ReadAllBytes(file))); }
+        try
+        {
+            Encoding e; byte[] b;
+            return RxPatched.IsMatch(ReadDict(file, out e, out b));
+        }
         catch { return false; }
     }
 
@@ -597,10 +633,12 @@ static class Program
                     continue;
                 }
                 if (!File.Exists(p + ".bak")) File.Copy(p, p + ".bak");
-                string t = Encoding.Unicode.GetString(File.ReadAllBytes(p));
+                Encoding enc; byte[] bom;
+                string t = ReadDict(p, out enc, out bom);
                 string n = Rx.Replace(t, "$1=^0\"");
-                if (n != t) { File.WriteAllBytes(p, Encoding.Unicode.GetBytes(n)); patched++; }
-                else already++;
+                if (n != t) { WriteDict(p, n, enc, bom); patched++; }
+                else if (RxPatched.IsMatch(t)) already++;
+                else errors.Add(p + "\n  template entries not found in this file (unexpected format)");
             }
             catch (Exception ex) { errors.Add(p + "\n  " + ex.Message); }
         }
