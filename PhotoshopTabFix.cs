@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using Microsoft.Win32;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
@@ -18,8 +19,8 @@ using System.Windows.Forms;
 [assembly: AssemblyProduct("Photoshop Tabs Cleaner")]
 [assembly: AssemblyCompany("Dudkiewicz Corp")]
 [assembly: AssemblyCopyright("© 2026 Dudkiewicz Corp — dudkiewiczcorp.com")]
-[assembly: AssemblyVersion("1.0.1.0")]
-[assembly: AssemblyFileVersion("1.0.1.0")]
+[assembly: AssemblyVersion("1.0.2.0")]
+[assembly: AssemblyFileVersion("1.0.2.0")]
 
 static class UI
 {
@@ -408,21 +409,57 @@ static class Program
         return y;
     }
 
+    static List<string> CandidateDirs()
+    {
+        var dirs = new List<string>();
+        string adobe = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Adobe");
+        try
+        {
+            if (Directory.Exists(adobe))
+                dirs.AddRange(Directory.GetDirectories(adobe, "Adobe Photoshop*"));
+        }
+        catch { }
+        // Creative Cloud can install to any drive; the uninstall registry knows where.
+        foreach (string root in new[] {
+            @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+            @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall" })
+        {
+            try
+            {
+                using (var k = Registry.LocalMachine.OpenSubKey(root))
+                {
+                    if (k == null) continue;
+                    foreach (string name in k.GetSubKeyNames())
+                    {
+                        using (var sub = k.OpenSubKey(name))
+                        {
+                            if (sub == null) continue;
+                            var dn = sub.GetValue("DisplayName") as string;
+                            if (dn == null || !dn.StartsWith("Adobe Photoshop")) continue;
+                            var loc = (sub.GetValue("InstallLocation") as string) ?? "";
+                            loc = loc.Trim().TrimEnd('\\');
+                            if (loc.Length > 0 && Directory.Exists(loc)) dirs.Add(loc);
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+        return dirs.GroupBy(d => d.ToLowerInvariant()).Select(g => g.First()).ToList();
+    }
+
     static void Scan()
     {
         installs.Clear();
         cardsPanel.Controls.Clear();
-        string adobe = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Adobe");
-        if (Directory.Exists(adobe))
+        foreach (string dir in CandidateDirs())
         {
-            foreach (string dir in Directory.GetDirectories(adobe, "Adobe Photoshop*"))
-            {
-                string loc = Path.Combine(dir, "Locales");
-                string[] files;
-                try { files = Directory.Exists(loc) ? Directory.GetFiles(loc, "tw10428_*.dat", SearchOption.AllDirectories) : new string[0]; }
-                catch { files = new string[0]; }
-                if (files.Length > 0) installs[Path.GetFileName(dir)] = files.ToList();
-            }
+            string loc = Path.Combine(dir, "Locales");
+            string[] files;
+            try { files = Directory.Exists(loc) ? Directory.GetFiles(loc, "tw10428_*.dat", SearchOption.AllDirectories) : new string[0]; }
+            catch { files = new string[0]; }
+            if (files.Length > 0 && !installs.ContainsKey(Path.GetFileName(dir)))
+                installs[Path.GetFileName(dir)] = files.ToList();
         }
         int cy = 0;
         foreach (var kv in installs.OrderBy(k => k.Key))
@@ -435,7 +472,7 @@ static class Program
             var f = UI.ChakraSemi(14);
             var none = new Panel { Left = 0, Top = 0, Width = cardsPanel.Width, Height = 24, BackColor = UI.Bg };
             Buffer(none);
-            none.Paint += (s, e) => UI.Draw(e.Graphics, "No Photoshop installation found under Program Files.", f, UI.TxStd, 0, 0);
+            none.Paint += (s, e) => UI.Draw(e.Graphics, "No Photoshop found (checked Program Files and the Windows registry).", f, UI.TxStd, 0, 0);
             cardsPanel.Controls.Add(none);
             cy = 38;
         }
@@ -547,6 +584,7 @@ static class Program
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
+        int patched = 0, restored = 0, already = 0, nobackup = 0;
         var errors = new List<string>();
         foreach (string p in installs[ver])
         {
@@ -554,19 +592,27 @@ static class Program
             {
                 if (restore)
                 {
-                    if (File.Exists(p + ".bak")) File.Copy(p + ".bak", p, true);
+                    if (File.Exists(p + ".bak")) { File.Copy(p + ".bak", p, true); restored++; }
+                    else nobackup++;
                     continue;
                 }
                 if (!File.Exists(p + ".bak")) File.Copy(p, p + ".bak");
                 string t = Encoding.Unicode.GetString(File.ReadAllBytes(p));
                 string n = Rx.Replace(t, "$1=^0\"");
-                if (n != t) File.WriteAllBytes(p, Encoding.Unicode.GetBytes(n));
+                if (n != t) { File.WriteAllBytes(p, Encoding.Unicode.GetBytes(n)); patched++; }
+                else already++;
             }
-            catch (Exception ex) { errors.Add(ex.Message); }
+            catch (Exception ex) { errors.Add(p + "\n  " + ex.Message); }
         }
-        if (errors.Count > 0)
-            MessageBox.Show(string.Join("\n", errors.Distinct()), "Photoshop Tabs Cleaner",
-                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        var report = new List<string>();
+        if (patched > 0) report.Add("Patched " + patched + " language file(s) - tabs now show only the file name.");
+        if (already > 0) report.Add(already + " file(s) were already patched.");
+        if (restored > 0) report.Add("Restored " + restored + " file(s) to the original.");
+        if (nobackup > 0) report.Add(nobackup + " file(s) had no backup to restore.");
+        if (errors.Count > 0) report.Add("ERRORS:\n" + string.Join("\n", errors.Distinct()));
+        if (report.Count == 0) report.Add("Nothing to do.");
+        MessageBox.Show(string.Join("\n\n", report), "Photoshop Tabs Cleaner - " + ver,
+            MessageBoxButtons.OK, errors.Count > 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
         Scan();
     }
 }
